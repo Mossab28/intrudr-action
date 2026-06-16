@@ -1,0 +1,40 @@
+name: 'IntrudR Security'
+description: 'Internal (repo) + external (live app) security scan with a single PR comment.'
+author: 'IntrudR'
+branding:
+  icon: 'shield'
+  color: 'green'
+inputs:
+  intrudr-api-key:
+    description: 'IntrudR API key. Omit for the free internal-only scan.'
+    required: false
+  target-url:
+    description: 'Deployed URL to scan externally. Required (with a key) for the external scan.'
+    required: false
+  depth:
+    description: 'light (fast, cheap, default) or full (deep, same as the IntrudR dashboard)'
+    required: false
+    default: 'light'
+  fail-on:
+    description: 'Fail the check if a finding is at or above this severity (critical|high|medium|low|info)'
+    required: false
+    default: 'high'
+  internal:
+    description: 'Run the internal (repo) scan'
+    required: false
+    default: 'true'
+  external:
+    description: 'Run the external (live app) scan when key + target-url are present'
+    required: false
+    default: 'true'
+  api-base-url:
+    description: 'IntrudR API base URL'
+    required: false
+    default: 'https://intrudr.io'
+  github-token:
+    description: 'Token for posting the PR comment'
+    required: false
+    default: '${{ github.token }}'
+runs:
+  using: 'node20'
+  main: 'dist/index.js'
