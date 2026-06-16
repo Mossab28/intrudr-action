@@ -13,7 +13,8 @@ test('submitCiScan posts target+depth+manifest and returns id', async () => {
   const fetch = mockFetch([{ status: 201, body: { id: 's1', reportUrl: 'https://intrudr.io/scans/s1', verificationRequired: false } }])
   const res = await submitCiScan({ apiBaseUrl: 'https://intrudr.io', apiKey: 'k', target: 'https://a.com', depth: 'light', manifest: { stack: [], routes: [], deps: [], secretsCount: 0 } }, fetch as unknown as typeof globalThis.fetch)
   expect(res.id).toBe('s1')
-  const body = JSON.parse((fetch.mock.calls[0][1] as RequestInit).body as string)
+  const call = fetch.mock.calls[0] as unknown as [string, RequestInit]
+  const body = JSON.parse(call[1].body as string)
   expect(body.depth).toBe('light'); expect(body.manifest).toBeDefined()
 })
 

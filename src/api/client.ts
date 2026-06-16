@@ -1,5 +1,5 @@
 import type { Finding, Severity, ScanResult } from '../types'
-import type { ReconManifest } from '../types'
+import type { ReconManifest } from '../internal/manifest-types'
 
 export class IntrudrApiError extends Error {
   constructor(message: string, readonly status: number) { super(message); this.name = 'IntrudrApiError' }
