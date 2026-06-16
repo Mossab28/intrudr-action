@@ -1,5 +1,5 @@
 import { test, expect, vi } from 'vitest'
-import { submitCiScan, mapVulnsToFindings, IntrudrApiError } from '../src/api/client'
+import { submitCiScan, mapVulnsToFindings, pollScan, IntrudrApiError } from '../src/api/client'
 
 function mockFetch(responses: Array<{ status: number; body: unknown; headers?: Record<string, string> }>) {
   let i = 0
@@ -31,4 +31,27 @@ test('submitCiScan throws clear error on verificationRequired', async () => {
 test('mapVulnsToFindings tags external + lowercases severity', () => {
   const f = mapVulnsToFindings([{ severity: 'CRITICAL', title: 'SQLi', affectedUrl: 'https://a.com/login' }])
   expect(f[0]).toMatchObject({ source: 'external', severity: 'critical', location: 'https://a.com/login' })
+})
+
+test('pollScan returns failed:true when scan status is FAILED', async () => {
+  const fetch = mockFetch([
+    { status: 200, body: { status: 'RUNNING' } },
+    { status: 200, body: { status: 'FAILED', reportUrl: 'https://intrudr.io/scans/s1', riskScore: null } },
+  ])
+  const result = await pollScan(
+    { apiBaseUrl: 'https://intrudr.io', apiKey: 'k', id: 's1' },
+    { fetchImpl: fetch as unknown as typeof globalThis.fetch, sleep: async () => {}, intervalMs: 0, timeoutMs: 5000 },
+  )
+  expect(result.failed).toBe(true)
+  expect(result.findings).toEqual([])
+})
+
+test('pollScan throws IntrudrApiError on non-429 4xx status', async () => {
+  const fetch = mockFetch([{ status: 404, body: {} }])
+  await expect(
+    pollScan(
+      { apiBaseUrl: 'https://intrudr.io', apiKey: 'k', id: 'bad' },
+      { fetchImpl: fetch as unknown as typeof globalThis.fetch, sleep: async () => {}, intervalMs: 0, timeoutMs: 5000 },
+    ),
+  ).rejects.toThrow(IntrudrApiError)
 })

@@ -11,6 +11,7 @@ export interface ScanResult {
   reportUrl: string | null
   riskScore: number | null
   findings: Finding[]
+  failed?: boolean
 }
 export function maxSeverity(list: Severity[]): Severity | null {
   let best: Severity | null = null

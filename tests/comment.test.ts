@@ -13,3 +13,10 @@ test('renders external section + report link when external ran', () => {
   expect(md).toContain('External'); expect(md).toContain('SQL injection'); expect(md).toContain('https://intrudr.io/scans/s1')
   expect(md).not.toContain('Add an IntrudR API key')
 })
+
+test('renders failure warning and no "no findings ✅" when externalFailed', () => {
+  const md = renderComment({ internal: [{ source: 'internal', severity: 'high', title: 'Some secret', location: 'a.ts:1' }], external: [], externalRan: true, externalFailed: true, reportUrl: 'https://intrudr.io/scans/s1', riskScore: null })
+  expect(md).toContain('External scan failed')
+  expect(md).toContain('https://intrudr.io/scans/s1')
+  expect(md).not.toContain('no findings ✅')
+})

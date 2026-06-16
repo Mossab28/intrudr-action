@@ -45,10 +45,14 @@ export async function pollScan(
   while (Date.now() < deadline) {
     const res = await fetchImpl(`${a.apiBaseUrl}/api/v1/scans/${a.id}`, { headers: { authorization: `Bearer ${a.apiKey}` } })
     if (res.status === 429) { await sleep(Number(res.headers.get('retry-after') ?? '60') * 1000); continue }
+    if (res.status >= 400) throw new IntrudrApiError('Polling failed: ' + res.status, res.status)
     const body = await res.json().catch(() => ({})) as Record<string, unknown>
     const status = String(body.status ?? 'PENDING')
-    if (status === 'DONE' || status === 'FAILED') {
-      return { reportUrl: (body.reportUrl as string) ?? null, riskScore: (body.riskScore as number) ?? null, findings: status === 'DONE' ? mapVulnsToFindings(body.vulnerabilities as RawVuln[]) : [] }
+    if (status === 'FAILED') {
+      return { reportUrl: (body.reportUrl as string) ?? null, riskScore: (body.riskScore as number) ?? null, findings: [], failed: true }
+    }
+    if (status === 'DONE') {
+      return { reportUrl: (body.reportUrl as string) ?? null, riskScore: (body.riskScore as number) ?? null, findings: mapVulnsToFindings(body.vulnerabilities as RawVuln[]), failed: false }
     }
     await sleep(interval)
   }

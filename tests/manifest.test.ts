@@ -12,3 +12,19 @@ test('builds a metadata-only manifest (no source, secrets as count)', () => {
   expect(m.secretsCount).toBe(1)
   expect(JSON.stringify(m)).not.toContain('AWS key')
 })
+
+test('buildManifest never leaks secret values from title or location', () => {
+  const SECRET = 'AKIA-FAKE-SECRET-VALUE'
+  const m = buildManifest({
+    files: ['package.json'],
+    pkg: { dependencies: {} },
+    secrets: [
+      { source: 'internal', severity: 'critical', title: `Found secret: ${SECRET}`, location: `config.ts:1 (${SECRET})` },
+      { source: 'internal', severity: 'high', title: `Another secret: ${SECRET}`, location: `.env:5` },
+    ],
+    deps: [],
+  })
+  expect(JSON.stringify(m)).not.toContain(SECRET)
+  expect(typeof m.secretsCount).toBe('number')
+  expect(m.secretsCount).toBe(2)
+})

@@ -36,6 +36,7 @@ export async function run(deps: RunDeps): Promise<{ failed: boolean }> {
   let reportUrl: string | null = null
   let riskScore: number | null = null
   let externalRan = false
+  let externalFailed = false
 
   if (config.runExternal) {
     const manifest = deps.buildManifest({
@@ -56,9 +57,10 @@ export async function run(deps: RunDeps): Promise<{ failed: boolean }> {
     reportUrl = result.reportUrl ?? sub.reportUrl
     riskScore = result.riskScore
     externalRan = true
+    externalFailed = result.failed ?? false
   }
 
-  const body = renderComment({ internal, external, externalRan, reportUrl, riskScore })
+  const body = renderComment({ internal, external, externalRan, externalFailed, reportUrl, riskScore })
   await deps.publish(body)
   return { failed: shouldFail([...internal, ...external], config.failOn) }
 }

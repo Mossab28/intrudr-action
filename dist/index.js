@@ -31899,10 +31899,15 @@ async function pollScan(a, opts = {}) {
             await sleep(Number(res.headers.get('retry-after') ?? '60') * 1000);
             continue;
         }
+        if (res.status >= 400)
+            throw new IntrudrApiError('Polling failed: ' + res.status, res.status);
         const body = await res.json().catch(() => ({}));
         const status = String(body.status ?? 'PENDING');
-        if (status === 'DONE' || status === 'FAILED') {
-            return { reportUrl: body.reportUrl ?? null, riskScore: body.riskScore ?? null, findings: status === 'DONE' ? mapVulnsToFindings(body.vulnerabilities) : [] };
+        if (status === 'FAILED') {
+            return { reportUrl: body.reportUrl ?? null, riskScore: body.riskScore ?? null, findings: [], failed: true };
+        }
+        if (status === 'DONE') {
+            return { reportUrl: body.reportUrl ?? null, riskScore: body.riskScore ?? null, findings: mapVulnsToFindings(body.vulnerabilities), failed: false };
         }
         await sleep(interval);
     }
@@ -31944,7 +31949,9 @@ function renderComment(input) {
     const badgeColor = input.riskScore != null && input.riskScore >= 70 ? 'red' : input.riskScore != null && input.riskScore >= 40 ? 'orange' : 'green';
     const badge = `![IntrudR](https://img.shields.io/badge/IntrudR-${encodeURIComponent(badgeScore)}-${badgeColor})`;
     const external = input.externalRan
-        ? `### 🌐 External scan (your live app)\n${countBySeverity(input.external)}\n\n${table(input.external)}\n\n${input.reportUrl ? `[Open full report →](${input.reportUrl})` : ''}`
+        ? input.externalFailed
+            ? `### 🌐 External scan (your live app)\n⚠️ External scan failed — see IntrudR for details.${input.reportUrl ? `\n\n[Open report →](${input.reportUrl})` : ''}`
+            : `### 🌐 External scan (your live app)\n${countBySeverity(input.external)}\n\n${table(input.external)}\n\n${input.reportUrl ? `[Open full report →](${input.reportUrl})` : ''}`
         : `### 🌐 External scan\n_Not run._ **Add an IntrudR API key** and a \`target-url\` to also scan your deployed app from the outside — IntrudR then sees your app from both sides. → https://intrudr.io/pricing`;
     return [
         COMMENT_MARKER,
@@ -32008,6 +32015,7 @@ async function run(deps) {
     let reportUrl = null;
     let riskScore = null;
     let externalRan = false;
+    let externalFailed = false;
     if (config.runExternal) {
         const manifest = deps.buildManifest({
             files: deps.listFiles(deps.workdir),
@@ -32027,8 +32035,9 @@ async function run(deps) {
         reportUrl = result.reportUrl ?? sub.reportUrl;
         riskScore = result.riskScore;
         externalRan = true;
+        externalFailed = result.failed ?? false;
     }
-    const body = renderComment({ internal, external, externalRan, reportUrl, riskScore });
+    const body = renderComment({ internal, external, externalRan, externalFailed, reportUrl, riskScore });
     await deps.publish(body);
     return { failed: shouldFail([...internal, ...external], config.failOn) };
 }
