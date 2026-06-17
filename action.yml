@@ -1,5 +1,5 @@
 name: 'IntrudR Security'
-description: 'Internal (repo) + external (live app) security scan with a single PR comment.'
+description: 'Internal (repo) + external (live app) security scan with a single PR comment. You are responsible for ensuring you are authorized to scan the target URL.'
 author: 'IntrudR'
 branding:
   icon: 'shield'
@@ -27,6 +27,10 @@ inputs:
     description: 'Run the external (live app) scan when key + target-url are present'
     required: false
     default: 'true'
+  confirm-authorized:
+    description: 'You confirm you own or are authorized to test target-url. Required for the external scan.'
+    required: false
+    default: 'false'
   api-base-url:
     description: 'IntrudR API base URL'
     required: false

@@ -23,3 +23,24 @@ test('external enabled when key and target present; depth full opt-in', () => {
     expect(cfg.depth).toBe('full')
   })
 })
+
+test('confirmAuthorized defaults to false', () => {
+  withEnv({}, () => {
+    const cfg = parseInputs()
+    expect(cfg.confirmAuthorized).toBe(false)
+  })
+})
+
+test('confirmAuthorized is true when input is "true"', () => {
+  withEnv({ 'INPUT_CONFIRM-AUTHORIZED': 'true' }, () => {
+    const cfg = parseInputs()
+    expect(cfg.confirmAuthorized).toBe(true)
+  })
+})
+
+test('confirmAuthorized is false for any value other than "true"', () => {
+  withEnv({ 'INPUT_CONFIRM-AUTHORIZED': 'yes' }, () => {
+    const cfg = parseInputs()
+    expect(cfg.confirmAuthorized).toBe(false)
+  })
+})

@@ -31734,8 +31734,9 @@ function parseInputs() {
     const runInternal = internalIn ? internalIn === 'true' : true;
     const externalRequested = externalIn ? externalIn === 'true' : true;
     const runExternal = externalRequested && Boolean(apiKey) && Boolean(targetUrl);
+    const confirmAuthorized = core.getInput('confirm-authorized') === 'true';
     return {
-        apiKey, targetUrl, depth, failOn, runInternal, runExternal,
+        apiKey, targetUrl, depth, failOn, runInternal, runExternal, confirmAuthorized,
         apiBaseUrl: core.getInput('api-base-url') || 'https://intrudr.io',
         githubToken: core.getInput('github-token'),
     };
@@ -31865,7 +31866,7 @@ async function submitCiScan(a, fetchImpl = globalThis.fetch) {
     const res = await fetchImpl(`${a.apiBaseUrl}/api/v1/ci-scans`, {
         method: 'POST',
         headers: { authorization: `Bearer ${a.apiKey}`, 'content-type': 'application/json' },
-        body: JSON.stringify({ target: a.target, depth: a.depth, manifest: a.manifest }),
+        body: JSON.stringify({ target: a.target, depth: a.depth, manifest: a.manifest, acknowledged: true }),
     });
     const body = await res.json().catch(() => ({}));
     if (res.status === 402)
@@ -31874,8 +31875,6 @@ async function submitCiScan(a, fetchImpl = globalThis.fetch) {
         throw new IntrudrApiError('Invalid IntrudR API key.', 401);
     if (res.status >= 400)
         throw new IntrudrApiError(String(body.error ?? `API error ${res.status}`), res.status);
-    if (body.verificationRequired === true)
-        throw new IntrudrApiError(`Target not verified. Verify ${a.target} once at ${a.apiBaseUrl}/settings/api-keys before scanning from CI.`, 400);
     return { id: String(body.id), reportUrl: body.reportUrl ?? null };
 }
 function mapVulnsToFindings(vulns) {
@@ -31993,7 +31992,89 @@ function shouldFail(findings, threshold) {
     return findings.some(f => SEVERITY_ORDER.indexOf(f.severity) <= limit);
 }
 
+;// CONCATENATED MODULE: external "node:os"
+const external_node_os_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:os");
+;// CONCATENATED MODULE: external "node:https"
+const external_node_https_namespaceObject = __WEBPACK_EXTERNAL_createRequire(import.meta.url)("node:https");
+;// CONCATENATED MODULE: ./src/internal/tools.ts
+
+
+
+
+
+
+// Pinned stable versions
+const GITLEAKS_VERSION = '8.21.2';
+const OSV_SCANNER_VERSION = '1.9.2';
+function toolDownloadUrl(tool, platform = process.platform, arch = process.arch) {
+    if (tool === 'gitleaks') {
+        // gitleaks_8.21.2_linux_x64.tar.gz
+        const goArch = arch === 'x64' ? 'x64' : arch === 'arm64' ? 'arm64' : 'x64';
+        const goos = platform === 'darwin' ? 'darwin' : 'linux';
+        return `https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_${goos}_${goArch}.tar.gz`;
+    }
+    // osv-scanner — single binary
+    const goArch = arch === 'arm64' ? 'arm64' : 'amd64';
+    const goos = platform === 'darwin' ? 'darwin' : 'linux';
+    return `https://github.com/google/osv-scanner/releases/download/v${OSV_SCANNER_VERSION}/osv-scanner_${goos}_${goArch}`;
+}
+function isOnPath(cmd) {
+    try {
+        (0,external_node_child_process_namespaceObject.execSync)(`which ${cmd}`, { stdio: 'ignore' });
+        return true;
+    }
+    catch {
+        return false;
+    }
+}
+async function download(url, dest) {
+    return new Promise((resolve, reject) => {
+        const file = (0,external_node_fs_namespaceObject.createWriteStream)(dest);
+        const get = (u) => external_node_https_namespaceObject.get(u, res => {
+            if (res.statusCode === 301 || res.statusCode === 302) {
+                get(res.headers.location);
+                return;
+            }
+            if (res.statusCode !== 200) {
+                reject(new Error(`HTTP ${res.statusCode} for ${u}`));
+                return;
+            }
+            res.pipe(file);
+            file.on('finish', () => file.close(() => resolve()));
+        }).on('error', reject);
+        get(url);
+    });
+}
+async function installGitleaks(dir) {
+    const tarPath = (0,external_node_path_namespaceObject.join)(dir, 'gitleaks.tar.gz');
+    await download(toolDownloadUrl('gitleaks'), tarPath);
+    (0,external_node_child_process_namespaceObject.execSync)(`tar -xzf ${tarPath} -C ${dir} gitleaks`);
+    (0,external_node_fs_namespaceObject.chmodSync)((0,external_node_path_namespaceObject.join)(dir, 'gitleaks'), 0o755);
+}
+async function installOsvScanner(dir) {
+    const dest = (0,external_node_path_namespaceObject.join)(dir, 'osv-scanner');
+    await download(toolDownloadUrl('osv-scanner'), dest);
+    (0,external_node_fs_namespaceObject.chmodSync)(dest, 0o755);
+}
+async function ensureTools() {
+    const needGitleaks = !isOnPath('gitleaks');
+    const needOsv = !isOnPath('osv-scanner');
+    if (!needGitleaks && !needOsv)
+        return;
+    const dir = (0,external_node_fs_namespaceObject.mkdtempSync)((0,external_node_path_namespaceObject.join)((0,external_node_os_namespaceObject.tmpdir)(), 'intrudr-tools-'));
+    core.addPath(dir);
+    const tasks = [];
+    if (needGitleaks) {
+        tasks.push(installGitleaks(dir).catch(e => { core.warning(`gitleaks download failed: ${e.message} — internal secrets scan will be skipped`); }));
+    }
+    if (needOsv) {
+        tasks.push(installOsvScanner(dir).catch(e => { core.warning(`osv-scanner download failed: ${e.message} — deps scan will be skipped`); }));
+    }
+    await Promise.all(tasks);
+}
+
 ;// CONCATENATED MODULE: ./src/main.ts
+
 
 
 
@@ -32016,7 +32097,11 @@ async function run(deps) {
     let riskScore = null;
     let externalRan = false;
     let externalFailed = false;
-    if (config.runExternal) {
+    if (config.runExternal && !config.confirmAuthorized) {
+        const warnFn = deps.warn ?? core.warning;
+        warnFn('⚠️ External scan skipped. Scanning a target you do not own or are not authorized to test may be illegal and expose you to prosecution. Set confirm-authorized: true ONLY for targets you own or have written permission to test.');
+    }
+    if (config.runExternal && config.confirmAuthorized) {
         const manifest = deps.buildManifest({
             files: deps.listFiles(deps.workdir),
             pkg: deps.readPkg(deps.workdir),
@@ -32082,6 +32167,7 @@ function readPkg(workdir) {
 }
 async function main() {
     try {
+        await ensureTools();
         const config = parseInputs();
         const octokit = github.getOctokit(config.githubToken);
         const pr = github.context.payload.pull_request?.number;
@@ -32095,6 +32181,7 @@ async function main() {
             submitCiScan: submitCiScan,
             pollScan: pollScan,
             workdir: process.env.GITHUB_WORKSPACE ?? process.cwd(),
+            warn: core.warning,
             publish: async (body) => {
                 if (!pr) {
                     core.info('Not a pull_request event — skipping comment.');

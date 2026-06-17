@@ -8,6 +8,7 @@ export interface Config {
   failOn: Severity
   runInternal: boolean
   runExternal: boolean
+  confirmAuthorized: boolean
   apiBaseUrl: string
   githubToken: string
 }
@@ -25,8 +26,9 @@ export function parseInputs(): Config {
   const runInternal = internalIn ? internalIn === 'true' : true
   const externalRequested = externalIn ? externalIn === 'true' : true
   const runExternal = externalRequested && Boolean(apiKey) && Boolean(targetUrl)
+  const confirmAuthorized = core.getInput('confirm-authorized') === 'true'
   return {
-    apiKey, targetUrl, depth, failOn, runInternal, runExternal,
+    apiKey, targetUrl, depth, failOn, runInternal, runExternal, confirmAuthorized,
     apiBaseUrl: core.getInput('api-base-url') || 'https://intrudr.io',
     githubToken: core.getInput('github-token'),
   }

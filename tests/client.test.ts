@@ -10,7 +10,7 @@ function mockFetch(responses: Array<{ status: number; body: unknown; headers?: R
 }
 
 test('submitCiScan posts target+depth+manifest and returns id', async () => {
-  const fetch = mockFetch([{ status: 201, body: { id: 's1', reportUrl: 'https://intrudr.io/scans/s1', verificationRequired: false } }])
+  const fetch = mockFetch([{ status: 201, body: { id: 's1', reportUrl: 'https://intrudr.io/scans/s1' } }])
   const res = await submitCiScan({ apiBaseUrl: 'https://intrudr.io', apiKey: 'k', target: 'https://a.com', depth: 'light', manifest: { stack: [], routes: [], deps: [], secretsCount: 0 } }, fetch as unknown as typeof globalThis.fetch)
   expect(res.id).toBe('s1')
   const call = fetch.mock.calls[0] as unknown as [string, RequestInit]
@@ -18,15 +18,19 @@ test('submitCiScan posts target+depth+manifest and returns id', async () => {
   expect(body.depth).toBe('light'); expect(body.manifest).toBeDefined()
 })
 
+test('submitCiScan includes acknowledged:true in POST body', async () => {
+  const fetch = mockFetch([{ status: 201, body: { id: 's1', reportUrl: null } }])
+  await submitCiScan({ apiBaseUrl: 'https://intrudr.io', apiKey: 'k', target: 'https://a.com', depth: 'light', manifest: { stack: [], routes: [], deps: [], secretsCount: 0 } }, fetch as unknown as typeof globalThis.fetch)
+  const call = fetch.mock.calls[0] as unknown as [string, RequestInit]
+  const body = JSON.parse(call[1].body as string)
+  expect(body.acknowledged).toBe(true)
+})
+
 test('submitCiScan throws on 402', async () => {
   const fetch = mockFetch([{ status: 402, body: { error: 'used', upgrade: 'https://intrudr.io/pricing' } }])
   await expect(submitCiScan({ apiBaseUrl: 'https://intrudr.io', apiKey: 'k', target: 'https://a.com', depth: 'light', manifest: { stack: [], routes: [], deps: [], secretsCount: 0 } }, fetch as unknown as typeof globalThis.fetch)).rejects.toThrow(IntrudrApiError)
 })
 
-test('submitCiScan throws clear error on verificationRequired', async () => {
-  const fetch = mockFetch([{ status: 201, body: { id: 's1', verificationRequired: true } }])
-  await expect(submitCiScan({ apiBaseUrl: 'https://intrudr.io', apiKey: 'k', target: 'https://a.com', depth: 'light', manifest: { stack: [], routes: [], deps: [], secretsCount: 0 } }, fetch as unknown as typeof globalThis.fetch)).rejects.toThrow(/verify/i)
-})
 
 test('mapVulnsToFindings tags external + lowercases severity', () => {
   const f = mapVulnsToFindings([{ severity: 'CRITICAL', title: 'SQLi', affectedUrl: 'https://a.com/login' }])

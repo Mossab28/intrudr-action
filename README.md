@@ -18,17 +18,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: gitleaks/gitleaks-action@v2   # puts gitleaks on PATH
-      - uses: google/osv-scanner-action@v1  # puts osv-scanner on PATH
       - uses: intrudr/intrudr-action@v1
         with:
           intrudr-api-key: ${{ secrets.INTRUDR_API_KEY }}
           target-url: https://staging.example.com
+          confirm-authorized: true
           depth: light
           fail-on: high
 ```
 
+> `gitleaks` and `osv-scanner` are embedded — no extra setup steps needed.
+
 Without `intrudr-api-key` / `target-url`, the Action runs **internal-only** and posts an upsell CTA.
+
+## ⚠️ Authorization
+
+**You are responsible for the targets you scan.** Scanning a target you do not own or are not authorized to test may be illegal and expose you to prosecution. Set `confirm-authorized: true` ONLY for targets you own or have written permission to test.
 
 ## Inputs
 
@@ -36,6 +41,7 @@ Without `intrudr-api-key` / `target-url`, the Action runs **internal-only** and 
 |---|---|---|
 | `intrudr-api-key` | — | IntrudR key. Omit for free internal-only. |
 | `target-url` | — | Deployed URL to scan externally. |
+| `confirm-authorized` | `false` | You confirm you own or are authorized to test target-url. Required for the external scan. |
 | `depth` | `light` | `light` (fast/cheap) or `full` (deep, dashboard-grade). |
 | `fail-on` | `high` | Fail the check at/above this severity. |
 | `internal` | `true` | Run the internal scan. |
@@ -64,5 +70,3 @@ The internal scan runs on **every PR** (free). You choose **when** the external 
 | Free | ✅ every PR | 1 free scan | taste of internal+external |
 | Hunter | ✅ | ✅ | credits-based volume |
 | Arsenal | ✅ | ✅ | more credits, deep mode, parallel |
-
-> Verify your target domain once at https://intrudr.io/settings/api-keys before scanning it from CI.

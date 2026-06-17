@@ -11,6 +11,7 @@ import { submitCiScan, pollScan } from './api/client'
 import { renderComment } from './report/comment'
 import { upsertComment } from './report/publish'
 import { shouldFail } from './report/gate'
+import { ensureTools } from './internal/tools'
 import type { Finding } from './types'
 
 export interface RunDeps {
@@ -23,6 +24,7 @@ export interface RunDeps {
   submitCiScan: typeof submitCiScan
   pollScan: typeof pollScan
   publish: (body: string) => Promise<void>
+  warn?: (msg: string) => void
   workdir: string
 }
 
@@ -38,7 +40,12 @@ export async function run(deps: RunDeps): Promise<{ failed: boolean }> {
   let externalRan = false
   let externalFailed = false
 
-  if (config.runExternal) {
+  if (config.runExternal && !config.confirmAuthorized) {
+    const warnFn = deps.warn ?? core.warning
+    warnFn('⚠️ External scan skipped. Scanning a target you do not own or are not authorized to test may be illegal and expose you to prosecution. Set confirm-authorized: true ONLY for targets you own or have written permission to test.')
+  }
+
+  if (config.runExternal && config.confirmAuthorized) {
     const manifest = deps.buildManifest({
       files: deps.listFiles(deps.workdir),
       pkg: deps.readPkg(deps.workdir),
@@ -90,6 +97,7 @@ function readPkg(workdir: string): { dependencies?: Record<string, string> } {
 
 async function main(): Promise<void> {
   try {
+    await ensureTools()
     const config = parseInputs()
     const octokit = github.getOctokit(config.githubToken)
     const pr = github.context.payload.pull_request?.number
@@ -103,6 +111,7 @@ async function main(): Promise<void> {
       submitCiScan,
       pollScan,
       workdir: process.env.GITHUB_WORKSPACE ?? process.cwd(),
+      warn: core.warning,
       publish: async (body) => {
         if (!pr) { core.info('Not a pull_request event — skipping comment.'); return }
         await upsertComment(

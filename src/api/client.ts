@@ -11,13 +11,12 @@ export async function submitCiScan(a: SubmitArgs, fetchImpl: typeof globalThis.f
   const res = await fetchImpl(`${a.apiBaseUrl}/api/v1/ci-scans`, {
     method: 'POST',
     headers: { authorization: `Bearer ${a.apiKey}`, 'content-type': 'application/json' },
-    body: JSON.stringify({ target: a.target, depth: a.depth, manifest: a.manifest }),
+    body: JSON.stringify({ target: a.target, depth: a.depth, manifest: a.manifest, acknowledged: true }),
   })
   const body = await res.json().catch(() => ({})) as Record<string, unknown>
   if (res.status === 402) throw new IntrudrApiError(`${body.error ?? 'Paid plan required'} — ${body.upgrade ?? a.apiBaseUrl + '/pricing'}`, 402)
   if (res.status === 401) throw new IntrudrApiError('Invalid IntrudR API key.', 401)
   if (res.status >= 400) throw new IntrudrApiError(String(body.error ?? `API error ${res.status}`), res.status)
-  if (body.verificationRequired === true) throw new IntrudrApiError(`Target not verified. Verify ${a.target} once at ${a.apiBaseUrl}/settings/api-keys before scanning from CI.`, 400)
   return { id: String(body.id), reportUrl: (body.reportUrl as string) ?? null }
 }
 

@@ -3,7 +3,7 @@ import { run } from '../src/main'
 
 test('run aggregates internal + external and fails on threshold', async () => {
   const deps = {
-    config: { apiKey: 'k', targetUrl: 'https://a.com', depth: 'light', failOn: 'high', runInternal: true, runExternal: true, apiBaseUrl: 'https://intrudr.io', githubToken: 't' },
+    config: { apiKey: 'k', targetUrl: 'https://a.com', depth: 'light', failOn: 'high', runInternal: true, runExternal: true, confirmAuthorized: true, apiBaseUrl: 'https://intrudr.io', githubToken: 't' },
     runSecretsScan: () => [{ source: 'internal', severity: 'low', title: 'minor' }],
     runDepsScan: () => [],
     listFiles: () => ['package.json'],
@@ -23,12 +23,28 @@ test('run aggregates internal + external and fails on threshold', async () => {
 test('run stays internal-only (no server call) when external disabled', async () => {
   const submitCiScan = vi.fn()
   const deps = {
-    config: { apiKey: '', targetUrl: '', depth: 'light', failOn: 'high', runInternal: true, runExternal: false, apiBaseUrl: 'https://intrudr.io', githubToken: 't' },
+    config: { apiKey: '', targetUrl: '', depth: 'light', failOn: 'high', runInternal: true, runExternal: false, confirmAuthorized: false, apiBaseUrl: 'https://intrudr.io', githubToken: 't' },
     runSecretsScan: () => [], runDepsScan: () => [], listFiles: () => [], readPkg: () => ({}),
     buildManifest: () => ({ stack: [], routes: [], deps: [], secretsCount: 0 }),
     submitCiScan, pollScan: vi.fn(), publish: vi.fn(async () => {}), workdir: '/repo',
   }
   const result = await run(deps as never)
   expect(submitCiScan).not.toHaveBeenCalled()
+  expect(result.failed).toBe(false)
+})
+
+test('run skips external scan and emits warning when runExternal true but confirmAuthorized false', async () => {
+  const submitCiScan = vi.fn()
+  const warn = vi.fn()
+  const deps = {
+    config: { apiKey: 'k', targetUrl: 'https://a.com', depth: 'light', failOn: 'high', runInternal: true, runExternal: true, confirmAuthorized: false, apiBaseUrl: 'https://intrudr.io', githubToken: 't' },
+    runSecretsScan: () => [], runDepsScan: () => [], listFiles: () => [], readPkg: () => ({}),
+    buildManifest: () => ({ stack: [], routes: [], deps: [], secretsCount: 0 }),
+    submitCiScan, pollScan: vi.fn(), publish: vi.fn(async () => {}), workdir: '/repo',
+    warn,
+  }
+  const result = await run(deps as never)
+  expect(submitCiScan).not.toHaveBeenCalled()
+  expect(warn).toHaveBeenCalledWith(expect.stringContaining('confirm-authorized'))
   expect(result.failed).toBe(false)
 })
