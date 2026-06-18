@@ -1,5 +1,5 @@
 <p align="center">
-  <img src=".github/intrudr-logo.png" width="96" alt="IntrudR" />
+  <img src=".github/logo.png" width="96" alt="IntrudR" />
 </p>
 
 <h1 align="center">IntrudR Security Action</h1>
