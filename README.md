@@ -1,6 +1,10 @@
-# IntrudR Security Action
+<p align="center">
+  <img src=".github/intrudr-logo.png" width="96" alt="IntrudR" />
+</p>
 
-Scans your **code** and your **deployed app**, then posts one PR comment — IntrudR sees your app from both sides.
+<h1 align="center">IntrudR Security Action</h1>
+
+<p align="center">Scans your <strong>code</strong> and your <strong>deployed app</strong>, then posts one PR comment — IntrudR sees your app from both sides.</p>
 
 - **Internal (free, every PR):** secrets + vulnerable dependencies, in your CI. Open-source tools, never leaves your runner.
 - **External (with an IntrudR key):** IntrudR scans your live app from the outside; the internal recon guides it.
