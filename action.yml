@@ -1,5 +1,5 @@
 name: 'IntrudR Security'
-description: 'Internal (repo) + external (live app) security scan with a single PR comment. You are responsible for ensuring you are authorized to scan the target URL.'
+description: 'Internal (repo) + external (live app) security scan, posted as a single pull-request comment.'
 author: 'IntrudR'
 branding:
   icon: 'shield'
