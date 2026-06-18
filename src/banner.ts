@@ -1,6 +1,8 @@
 // Brand banner printed at the start of every run — block-art "INTRUDR" in bone,
-// in the spirit of the Claude Code splash. Bone = #EFE8DC (24-bit ANSI).
-const BONE = '\x1b[38;2;239;232;220m'
+// in the spirit of the Claude Code splash. GitHub Actions logs don't reliably
+// render 24-bit truecolor (it falls back to white), so we use a 256-color beige
+// (230 = warm cream/bone) which renders correctly. Swap to 187 for a deeper beige.
+const BONE = '\x1b[38;5;230m'
 const DIM = '\x1b[2m'
 const RESET = '\x1b[0m'
 
