@@ -2,8 +2,8 @@ name: 'IntrudR Security'
 description: 'Internal (repo) + external (live app) security scan, posted as a single pull-request comment.'
 author: 'IntrudR'
 branding:
-  icon: 'shield'
-  color: 'green'
+  icon: 'crosshair'
+  color: 'gray-dark'
 inputs:
   intrudr-api-key:
     description: 'IntrudR API key. Omit for the free internal-only scan.'
