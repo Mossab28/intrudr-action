@@ -32073,7 +32073,27 @@ async function ensureTools() {
     await Promise.all(tasks);
 }
 
+;// CONCATENATED MODULE: ./src/banner.ts
+// Brand banner printed at the start of every run — block-art "INTRUDR" in bone,
+// in the spirit of the Claude Code splash. Bone = #EFE8DC (24-bit ANSI).
+const BONE = '\x1b[38;2;239;232;220m';
+const DIM = '\x1b[2m';
+const RESET = '\x1b[0m';
+const ART = [
+    '',
+    '██╗███╗   ██╗████████╗██████╗ ██╗   ██╗██████╗ ██████╗ ',
+    '██║████╗  ██║╚══██╔══╝██╔══██╗██║   ██║██╔══██╗██╔══██╗',
+    '██║██╔██╗ ██║   ██║   ██████╔╝██║   ██║██║  ██║██████╔╝',
+    '██║██║╚██╗██║   ██║   ██╔══██╗██║   ██║██║  ██║██╔══██╗',
+    '██║██║ ╚████║   ██║   ██║  ██║╚██████╔╝██████╔╝██║  ██║',
+    '╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ╚═╝  ╚═╝',
+].join('\n');
+function printBanner() {
+    process.stdout.write(`${BONE}${ART}${RESET}\n${DIM}  Security · sees your app from both sides — intrudr.io${RESET}\n\n`);
+}
+
 ;// CONCATENATED MODULE: ./src/main.ts
+
 
 
 
@@ -32167,6 +32187,7 @@ function readPkg(workdir) {
 }
 async function main() {
     try {
+        printBanner();
         await ensureTools();
         const config = parseInputs();
         const octokit = github.getOctokit(config.githubToken);

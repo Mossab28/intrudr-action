@@ -12,6 +12,7 @@ import { renderComment } from './report/comment'
 import { upsertComment } from './report/publish'
 import { shouldFail } from './report/gate'
 import { ensureTools } from './internal/tools'
+import { printBanner } from './banner'
 import type { Finding } from './types'
 
 export interface RunDeps {
@@ -97,6 +98,7 @@ function readPkg(workdir: string): { dependencies?: Record<string, string> } {
 
 async function main(): Promise<void> {
   try {
+    printBanner()
     await ensureTools()
     const config = parseInputs()
     const octokit = github.getOctokit(config.githubToken)
