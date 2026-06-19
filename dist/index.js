@@ -31906,7 +31906,8 @@ async function pollScan(a, opts = {}) {
             return { reportUrl: body.reportUrl ?? null, riskScore: body.riskScore ?? null, findings: [], failed: true };
         }
         if (status === 'DONE') {
-            return { reportUrl: body.reportUrl ?? null, riskScore: body.riskScore ?? null, findings: mapVulnsToFindings(body.vulnerabilities), failed: false };
+            const reconNote = body.recon?.rationale ?? null;
+            return { reportUrl: body.reportUrl ?? null, riskScore: body.riskScore ?? null, findings: mapVulnsToFindings(body.vulnerabilities), failed: false, reconNote };
         }
         await sleep(interval);
     }
@@ -31947,10 +31948,11 @@ function renderComment(input) {
     const badgeScore = input.riskScore != null ? `${input.riskScore}` : 'internal';
     const badgeColor = input.riskScore != null && input.riskScore >= 70 ? 'red' : input.riskScore != null && input.riskScore >= 40 ? 'orange' : 'green';
     const badge = `![IntrudR](https://img.shields.io/badge/IntrudR-${encodeURIComponent(badgeScore)}-${badgeColor})`;
+    const focusLine = input.reconNote ? `\n\n> 🎯 **Where IntrudR focused:** ${input.reconNote}` : '';
     const external = input.externalRan
         ? input.externalFailed
             ? `### 🌐 External scan (your live app)\n⚠️ External scan failed — see IntrudR for details.${input.reportUrl ? `\n\n[Open report →](${input.reportUrl})` : ''}`
-            : `### 🌐 External scan (your live app)\n${countBySeverity(input.external)}\n\n${table(input.external)}\n\n${input.reportUrl ? `[Open full report →](${input.reportUrl})` : ''}`
+            : `### 🌐 External scan (your live app)\n${countBySeverity(input.external)}${focusLine}\n\n${table(input.external)}\n\n${input.reportUrl ? `[Open full report →](${input.reportUrl})` : ''}`
         : `### 🌐 External scan\n_Not run._ **Add an IntrudR API key** and a \`target-url\` to also scan your deployed app from the outside — IntrudR then sees your app from both sides. → https://intrudr.io/pricing`;
     return [
         COMMENT_MARKER,
@@ -32119,6 +32121,7 @@ async function run(deps) {
     let riskScore = null;
     let externalRan = false;
     let externalFailed = false;
+    let reconNote = null;
     if (config.runExternal && !config.confirmAuthorized) {
         const warnFn = deps.warn ?? core.warning;
         warnFn('⚠️ External scan skipped. Scanning a target you do not own or are not authorized to test may be illegal and expose you to prosecution. Set confirm-authorized: true ONLY for targets you own or have written permission to test.');
@@ -32143,8 +32146,9 @@ async function run(deps) {
         riskScore = result.riskScore;
         externalRan = true;
         externalFailed = result.failed ?? false;
+        reconNote = result.reconNote ?? null;
     }
-    const body = renderComment({ internal, external, externalRan, externalFailed, reportUrl, riskScore });
+    const body = renderComment({ internal, external, externalRan, externalFailed, reportUrl, riskScore, reconNote });
     await deps.publish(body);
     return { failed: shouldFail([...internal, ...external], config.failOn) };
 }

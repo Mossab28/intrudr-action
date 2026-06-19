@@ -51,7 +51,8 @@ export async function pollScan(
       return { reportUrl: (body.reportUrl as string) ?? null, riskScore: (body.riskScore as number) ?? null, findings: [], failed: true }
     }
     if (status === 'DONE') {
-      return { reportUrl: (body.reportUrl as string) ?? null, riskScore: (body.riskScore as number) ?? null, findings: mapVulnsToFindings(body.vulnerabilities as RawVuln[]), failed: false }
+      const reconNote = (body.recon as { rationale?: string } | null)?.rationale ?? null
+      return { reportUrl: (body.reportUrl as string) ?? null, riskScore: (body.riskScore as number) ?? null, findings: mapVulnsToFindings(body.vulnerabilities as RawVuln[]), failed: false, reconNote }
     }
     await sleep(interval)
   }

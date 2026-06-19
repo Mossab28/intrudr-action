@@ -40,6 +40,7 @@ export async function run(deps: RunDeps): Promise<{ failed: boolean }> {
   let riskScore: number | null = null
   let externalRan = false
   let externalFailed = false
+  let reconNote: string | null = null
 
   if (config.runExternal && !config.confirmAuthorized) {
     const warnFn = deps.warn ?? core.warning
@@ -66,9 +67,10 @@ export async function run(deps: RunDeps): Promise<{ failed: boolean }> {
     riskScore = result.riskScore
     externalRan = true
     externalFailed = result.failed ?? false
+    reconNote = result.reconNote ?? null
   }
 
-  const body = renderComment({ internal, external, externalRan, externalFailed, reportUrl, riskScore })
+  const body = renderComment({ internal, external, externalRan, externalFailed, reportUrl, riskScore, reconNote })
   await deps.publish(body)
   return { failed: shouldFail([...internal, ...external], config.failOn) }
 }

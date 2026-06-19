@@ -12,6 +12,9 @@ export interface ScanResult {
   riskScore: number | null
   findings: Finding[]
   failed?: boolean
+  // Short trace from the recon step: what IntrudR focused on, what it skipped,
+  // and why. Shown in the PR comment so the scan isn't an opaque box.
+  reconNote?: string | null
 }
 export function maxSeverity(list: Severity[]): Severity | null {
   let best: Severity | null = null
